@@ -5,167 +5,291 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>倉儲管理系統</title>
 <style>
-body{font-family:Arial;margin:20px;background:#f5f5f5}
-.card{background:#fff;padding:15px;border-radius:8px;margin-bottom:15px}
-input,button{padding:8px;margin:4px}
-table{width:100%;border-collapse:collapse}
-th,td{border:1px solid #ccc;padding:8px;text-align:center}
-th{background:#eee}
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Microsoft JhengHei', Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background: #f0f2f5;
+    color: #333;
+  }
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 1.6rem;
+    margin: 0 0 4px 0;
+    color: #1a1a2e;
+  }
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #fff;
+    padding: 16px 24px;
+    border-radius: 10px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  }
+  .card {
+    background: #fff;
+    padding: 20px 24px;
+    border-radius: 10px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  }
+  h3 {
+    margin: 0 0 12px 0;
+    font-size: 1rem;
+    color: #444;
+    border-left: 4px solid #4a90d9;
+    padding-left: 8px;
+  }
+  .form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  input[type="text"], input[type="number"], input:not([type]) {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input:focus {
+    border-color: #4a90d9;
+  }
+  button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-family: inherit;
+    transition: background 0.2s;
+  }
+  .btn-primary { background: #4a90d9; color: #fff; }
+  .btn-primary:hover { background: #357abd; }
+  .btn-danger { background: #e74c3c; color: #fff; font-size: 0.82rem; padding: 5px 10px; }
+  .btn-danger:hover { background: #c0392b; }
+  .btn-admin { background: #27ae60; color: #fff; }
+  .btn-admin:hover { background: #1e8449; }
+  .sections {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  @media (max-width: 768px) {
+    .sections { grid-template-columns: 1fr; }
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 0.93rem; }
+  th, td { border: 1px solid #e0e0e0; padding: 9px 12px; text-align: center; }
+  th { background: #f5f7fa; color: #555; font-weight: 600; }
+  tr:hover td { background: #fafbff; }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    background: #e8f4fd;
+    color: #2980b9;
+  }
+  #adminArea { margin-top: 0; }
+  .admin-hidden { display: none; }
 </style>
 </head>
 <body>
+<div class="container">
 
-<div class="card">
-<h2>倉儲管理系統 V3</h2><button onclick="adminLogin()">管理員登入</button><div id="adminArea" style="display:none">
+  <div class="header">
+    <h1>🏭 倉儲管理系統</h1>
+    <div>
+      <span id="adminBadge" style="display:none;margin-right:10px;" class="badge">✅ 管理員模式</span>
+      <button class="btn-admin" onclick="adminLogin()" id="loginBtn">管理員登入</button>
+    </div>
+  </div>
 
-<h3>新增品項</h3>
-<input id="item" placeholder="品項名稱">
-<input id="loc" placeholder="倉庫位置">
-<input id="stock" type="number" placeholder="初始庫存">
-<button onclick="addItem()">新增品項</button>
+  <div class="sections" id="adminArea" style="display:none">
+    <div class="card">
+      <h3>新增品項</h3>
+      <div class="form-row">
+        <input id="item" placeholder="品項名稱">
+        <input id="loc" placeholder="倉庫位置">
+        <input id="stock" type="number" placeholder="初始庫存" min="1">
+        <button class="btn-primary" onclick="addItem()">＋ 新增品項</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3>進貨作業</h3>
+      <div class="form-row">
+        <input id="inItem" placeholder="品項名稱">
+        <input id="inQty" type="number" placeholder="進貨數量" min="1">
+        <button class="btn-primary" onclick="addStock()">📦 確認進貨</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3>領用作業</h3>
+      <div class="form-row">
+        <input id="useItem" placeholder="品項名稱">
+        <input id="user" placeholder="領用人">
+        <input id="qty" type="number" placeholder="領用數量" min="1">
+        <button class="btn-primary" onclick="useStock()">✅ 確認領用</button>
+      </div>
+    </div>
+  </div>
 
+  <div class="card" id="useCard" style="">
+    <h3>領用作業</h3>
+    <div class="form-row">
+      <input id="useItem2" placeholder="品項名稱">
+      <input id="user2" placeholder="領用人">
+      <input id="qty2" type="number" placeholder="領用數量" min="1">
+      <button class="btn-primary" onclick="useStock2()">✅ 確認領用</button>
+    </div>
+  </div>
 
-<h3>進貨作業</h3>
-<input id="inItem" placeholder="品項名稱">
-<input id="inQty" type="number" placeholder="進貨數量">
-<button onclick="addStock()">確認進貨</button>
-</div><h3>領用作業</h3>
-<input id="useItem" placeholder="品項名稱">
-<input id="user" placeholder="領用人">
-<input id="qty" type="number" placeholder="領用數量">
-<button onclick="useStock()">確認領用</button>
+  <div class="card">
+    <h3>目前庫存</h3>
+    <table>
+      <thead>
+        <tr><th>品項</th><th>倉庫位置</th><th>前期存貨</th><th>累計進貨</th><th>累計領用</th><th>目前庫存</th><th id="opCol" style="display:none">操作</th></tr>
+      </thead>
+      <tbody id="stockTable"></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>領用歷史紀錄</h3>
+    <table>
+      <thead>
+        <tr><th>時間</th><th>品項</th><th>領用人</th><th>領用數量</th><th id="logOpCol" style="display:none">操作</th></tr>
+      </thead>
+      <tbody id="logTable"></tbody>
+    </table>
+  </div>
+
 </div>
-
-<div class="card">
-<h3>目前庫存</h3>
-<table>
-<thead>
-<tr><th>品項</th><th>倉庫位置</th><th>前期存貨</th><th>累計進貨</th><th>累計領用</th><th>目前庫存</th><th>操作</th></tr>
-</thead>
-<tbody id="stockTable"></tbody>
-</table>
-</div>
-
-<div class="card">
-<h3>領用歷史紀錄</h3>
-<table>
-<thead>
-<tr><th>時間</th><th>品項</th><th>領用人</th><th>領用數量</th><th>操作</th></tr>
-</thead>
-<tbody id="logTable"></tbody>
-</table>
-</div>
-
 <script>
-let isAdmin=false;
+let isAdmin = false;
 
-function adminLogin(){
- const p=prompt('請輸入管理密碼');
- if(p==='8787'){
-   isAdmin=true;
-   document.getElementById('adminArea').style.display='block';
-   render();
- }else{
-   alert('密碼錯誤');
- }
+function adminLogin() {
+  const p = prompt('請輸入管理密碼');
+  if (p === '8787') {
+    isAdmin = true;
+    document.getElementById('adminArea').style.display = 'grid';
+    document.getElementById('useCard').style.display = 'none';
+    document.getElementById('adminBadge').style.display = 'inline-block';
+    document.getElementById('loginBtn').style.display = 'none';
+    document.getElementById('opCol').style.display = '';
+    document.getElementById('logOpCol').style.display = '';
+    render();
+  } else {
+    alert('密碼錯誤');
+  }
 }
 
-let inventory = JSON.parse(localStorage.getItem('inventory')||'[]');
-let logs = JSON.parse(localStorage.getItem('logs')||'[]');
+let inventory = JSON.parse(localStorage.getItem('inventory') || '[]');
+let logs = JSON.parse(localStorage.getItem('logs') || '[]');
 
-function save(){
- localStorage.setItem('inventory',JSON.stringify(inventory));
- localStorage.setItem('logs',JSON.stringify(logs));
+function save() {
+  localStorage.setItem('inventory', JSON.stringify(inventory));
+  localStorage.setItem('logs', JSON.stringify(logs));
 }
 
-
-function addStock(){
- if(!isAdmin){ alert('請先登入管理員'); return; }
- const item=document.getElementById('inItem').value.trim();
- const qty=parseInt(document.getElementById('inQty').value||0);
- const row=inventory.find(x=>x.item===item);
- if(!row){ alert('找不到品項'); return; }
- if(qty<=0){ alert('請輸入正確數量'); return; }
- row.inStock=(row.inStock||0)+qty; row.remain += qty;
- save();
- render();
+function addStock() {
+  if (!isAdmin) { alert('請先登入管理員'); return; }
+  const item = document.getElementById('inItem').value.trim();
+  const qty = parseInt(document.getElementById('inQty').value || 0);
+  const row = inventory.find(x => x.item === item);
+  if (!row) { alert('找不到品項'); return; }
+  if (qty <= 0) { alert('請輸入正確數量'); return; }
+  row.inStock = (row.inStock || 0) + qty;
+  row.remain += qty;
+  document.getElementById('inItem').value = '';
+  document.getElementById('inQty').value = '';
+  save(); render();
 }
 
-function addItem(){
- if(!isAdmin){ alert("請先登入管理員"); return; }
- const item=document.getElementById('item').value.trim();
- const loc=document.getElementById('loc').value.trim();
- const stock=parseInt(document.getElementById('stock').value||0);
-
- if(!item || !loc || stock<=0){
-   alert('請輸入完整資料');
-   return;
- }
-
- inventory.push({item,loc,startStock:stock,inStock:0,usedStock:0,remain:stock});
- save();
- render();
+function addItem() {
+  if (!isAdmin) { alert('請先登入管理員'); return; }
+  const item = document.getElementById('item').value.trim();
+  const loc = document.getElementById('loc').value.trim();
+  const stock = parseInt(document.getElementById('stock').value || 0);
+  if (!item || !loc || stock <= 0) { alert('請輸入完整資料'); return; }
+  if (inventory.find(x => x.item === item)) { alert('品項已存在'); return; }
+  inventory.push({ item, loc, startStock: stock, inStock: 0, usedStock: 0, remain: stock });
+  document.getElementById('item').value = '';
+  document.getElementById('loc').value = '';
+  document.getElementById('stock').value = '';
+  save(); render();
 }
 
-function useStock(){
- const item=document.getElementById('useItem').value.trim();
- const user=document.getElementById('user').value.trim();
- const qty=parseInt(document.getElementById('qty').value||0);
-
- const row=inventory.find(x=>x.item===item);
-
- if(!row){ alert('找不到品項'); return; }
- if(qty<=0 || qty>row.remain){ alert('庫存不足'); return; }
-
- row.usedStock=(row.usedStock||0)+qty; row.remain -= qty;
-
- logs.unshift({
-   time:new Date().toLocaleString(),
-   item:item,
-   user:user,
-   qty:qty
- });
-
- save();
- render();
+function useStock() {
+  const item = document.getElementById('useItem').value.trim();
+  const user = document.getElementById('user').value.trim();
+  const qty = parseInt(document.getElementById('qty').value || 0);
+  _doUse(item, user, qty);
+  document.getElementById('useItem').value = '';
+  document.getElementById('user').value = '';
+  document.getElementById('qty').value = '';
 }
 
-
-function deleteItem(i){
- if(!isAdmin){alert("請先登入管理員");return;} if(confirm('確定刪除此品項？')){
-   inventory.splice(i,1);
-   save();
-   render();
- }
+function useStock2() {
+  const item = document.getElementById('useItem2').value.trim();
+  const user = document.getElementById('user2').value.trim();
+  const qty = parseInt(document.getElementById('qty2').value || 0);
+  _doUse(item, user, qty);
+  document.getElementById('useItem2').value = '';
+  document.getElementById('user2').value = '';
+  document.getElementById('qty2').value = '';
 }
 
-function deleteLog(i){
- if(!isAdmin){alert("請先登入管理員");return;} if(confirm('確定刪除此紀錄？')){
-   logs.splice(i,1);
-   save();
-   render();
- }
+function _doUse(item, user, qty) {
+  const row = inventory.find(x => x.item === item);
+  if (!row) { alert('找不到品項'); return; }
+  if (!user) { alert('請輸入領用人'); return; }
+  if (qty <= 0 || qty > row.remain) { alert('數量錯誤或庫存不足'); return; }
+  row.usedStock = (row.usedStock || 0) + qty;
+  row.remain -= qty;
+  logs.unshift({ time: new Date().toLocaleString(), item, user, qty });
+  save(); render();
 }
 
+function deleteItem(i) {
+  if (!isAdmin) { alert('請先登入管理員'); return; }
+  if (confirm('確定刪除此品項？')) { inventory.splice(i, 1); save(); render(); }
+}
 
-function render(){
- document.getElementById('stockTable').innerHTML =
- inventory.map((r,i)=>`<tr>
-<td>${r.item}</td>
-<td>${r.loc}</td>
-<td>${r.startStock||0}</td>
-<td>${r.inStock||0}</td>
-<td>${r.usedStock||0}</td>
-<td>${r.remain}</td>
-<td>${isAdmin?`<button onclick="deleteItem(${i})">🗑️刪除</button>`:""}</td>
-</tr>`).join('');
+function deleteLog(i) {
+  if (!isAdmin) { alert('請先登入管理員'); return; }
+  if (confirm('確定刪除此紀錄？')) { logs.splice(i, 1); save(); render(); }
+}
 
- document.getElementById('logTable').innerHTML =
- logs.map((r,i)=>`<tr><td>${r.time}</td><td>${r.item}</td><td>${r.user}</td><td>${r.qty}</td><td>${isAdmin?`<button onclick="deleteLog(${i})">🗑️刪除</button>`:""}</td></tr>`).join('');
+function render() {
+  document.getElementById('stockTable').innerHTML = inventory.map((r, i) => `<tr>
+    <td>${r.item}</td>
+    <td>${r.loc}</td>
+    <td>${r.startStock || 0}</td>
+    <td>${r.inStock || 0}</td>
+    <td>${r.usedStock || 0}</td>
+    <td><strong>${r.remain}</strong></td>
+    <td style="${isAdmin ? '' : 'display:none'}">${isAdmin ? `<button class="btn-danger" onclick="deleteItem(${i})">🗑️ 刪除</button>` : ''}</td>
+  </tr>`).join('');
+
+  document.getElementById('logTable').innerHTML = logs.map((r, i) => `<tr>
+    <td>${r.time}</td><td>${r.item}</td><td>${r.user}</td><td>${r.qty}</td>
+    <td style="${isAdmin ? '' : 'display:none'}">${isAdmin ? `<button class="btn-danger" onclick="deleteLog(${i})">🗑️ 刪除</button>` : ''}</td>
+  </tr>`).join('');
 }
 
 render();
 </script>
-
 </body>
 </html>
