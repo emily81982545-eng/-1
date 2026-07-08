@@ -77,6 +77,7 @@ let isAdmin=false;
 let remoteDb=null;
 let remoteRef=null;
 let lastWriteAt=0;
+const clientId=`client_${Math.random().toString(36).slice(2)}`;
 const syncStatus=document.getElementById('syncStatus');
 
 const firebaseConfig = {
@@ -118,7 +119,8 @@ function save(){
    remoteRef.set({
      inventory,
      logs,
-     updatedAt
+     updatedAt,
+     updatedBy: clientId
    });
    return;
  }
@@ -215,21 +217,31 @@ function render(){
 function initSync(){
  if(!enableCloudSync){
    readLocal();
-   syncStatus.textContent='目前為本機模式（僅此裝置）；填入 Firebase 設定即可手機/電腦同步。';
+   syncStatus.textContent='目前為本機模式（僅此裝置）；填入 Firebase 設定即可手機/電腦同步。請勿把正式設定直接提交到版本庫。';
    render();
    return;
  }
- firebase.initializeApp(firebaseConfig);
- remoteDb = firebase.database();
- remoteRef = remoteDb.ref('warehouse');
- syncStatus.textContent='雲端同步中：手機與電腦會自動更新。';
- remoteRef.on('value', (snapshot) => {
-   const data = snapshot.val() || {};
-   if(data.updatedAt && data.updatedAt===lastWriteAt){ return; }
-   inventory = Array.isArray(data.inventory) ? data.inventory : [];
-   logs = Array.isArray(data.logs) ? data.logs : [];
+ try{
+   firebase.initializeApp(firebaseConfig);
+   remoteDb = firebase.database();
+   remoteRef = remoteDb.ref('warehouse');
+   syncStatus.textContent='雲端同步中：手機與電腦會自動更新。';
+   remoteRef.on('value', (snapshot) => {
+     const data = snapshot.val() || {};
+     if(data.updatedBy===clientId && data.updatedAt===lastWriteAt){ return; }
+     inventory = Array.isArray(data.inventory) ? data.inventory : [];
+     logs = Array.isArray(data.logs) ? data.logs : [];
+     render();
+   }, () => {
+     readLocal();
+     syncStatus.textContent='雲端同步失敗，已切換本機模式。';
+     render();
+   });
+ }catch(e){
+   readLocal();
+   syncStatus.textContent='雲端設定錯誤，已切換本機模式。';
    render();
- });
+ }
 }
 
 initSync();
