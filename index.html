@@ -77,7 +77,6 @@ let isAdmin=false;
 let remoteDb=null;
 let remoteRef=null;
 let lastWriteAt=0;
-let lastSeenUpdateAt=0;
 let hasShownCloudWriteFailure=false;
 const clientId=`client_${Math.random().toString(36).slice(2)}`;
 const syncStatus=document.getElementById('syncStatus');
@@ -129,26 +128,28 @@ function readLocal(){
 
 function save(){
  if(enableCloudSync){
-   if(!remoteRef){ return; }
-   const updatedAt=Date.now();
-   lastWriteAt=updatedAt;
-   lastSeenUpdateAt=Math.max(lastSeenUpdateAt,updatedAt);
-   remoteRef.set({
-     inventory,
-     logs,
-     updatedAt,
-     updatedBy: clientId
-   }).catch((error) => {
-     localStorage.setItem('inventory',JSON.stringify(inventory));
-     localStorage.setItem('logs',JSON.stringify(logs));
-     syncStatus.textContent=STATUS.writeFailed;
-     if(!hasShownCloudWriteFailure){
-       hasShownCloudWriteFailure=true;
-       alert('雲端同步失敗，已暫存本機。請稍後再確認網路或 Firebase 權限設定。');
-     }
-     console.error('Firebase write failed:', error);
-   });
-   return;
+   if(remoteRef){
+     const updatedAt=Date.now();
+     lastWriteAt=updatedAt;
+     remoteRef.set({
+       inventory,
+       logs,
+       updatedAt,
+       updatedBy: clientId
+     }).then(() => {
+       hasShownCloudWriteFailure=false;
+     }).catch((error) => {
+       localStorage.setItem('inventory',JSON.stringify(inventory));
+       localStorage.setItem('logs',JSON.stringify(logs));
+       syncStatus.textContent=STATUS.writeFailed;
+       if(!hasShownCloudWriteFailure){
+         hasShownCloudWriteFailure=true;
+         alert('雲端同步失敗，已暫存本機。請稍後再確認網路或 Firebase 權限設定。');
+       }
+       console.error('Firebase write failed:', error);
+     });
+     return;
+   }
  }
  localStorage.setItem('inventory',JSON.stringify(inventory));
  localStorage.setItem('logs',JSON.stringify(logs));
@@ -254,10 +255,8 @@ function initSync(){
    syncStatus.textContent=STATUS.cloudMode;
    remoteRef.on('value', (snapshot) => {
      const data = snapshot.val() || {};
-     const incomingUpdatedAt=Number(data.updatedAt)||0;
-     if(incomingUpdatedAt && incomingUpdatedAt<lastSeenUpdateAt){ return; }
-     if(data.updatedBy===clientId && incomingUpdatedAt===lastWriteAt){ return; }
-     if(incomingUpdatedAt){ lastSeenUpdateAt=incomingUpdatedAt; }
+     if(data.updatedBy===clientId && data.updatedAt===lastWriteAt){ return; }
+     hasShownCloudWriteFailure=false;
      inventory = Array.isArray(data.inventory) ? data.inventory : [];
      logs = Array.isArray(data.logs) ? data.logs : [];
      render();
