@@ -252,6 +252,7 @@ function initSync(){
      logs = Array.isArray(data.logs) ? data.logs : [];
      render();
    }, () => {
+     remoteRef.off('value');
      readLocal();
      syncStatus.textContent=STATUS.readFailed;
      render();
