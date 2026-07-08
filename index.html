@@ -79,6 +79,13 @@ let remoteRef=null;
 let lastWriteAt=0;
 const clientId=`client_${Math.random().toString(36).slice(2)}`;
 const syncStatus=document.getElementById('syncStatus');
+const STATUS = {
+ localMode: '目前為本機模式（僅此裝置）；填入 Firebase 設定即可手機/電腦同步。請勿把正式設定直接提交到版本庫。',
+ cloudMode: '雲端同步中：手機與電腦會自動更新。',
+ writeFailed: '雲端寫入失敗，資料已暫存本機。',
+ readFailed: '雲端同步失敗，已切換本機模式。',
+ configFailed: '雲端設定錯誤，已切換本機模式。'
+};
 
 const firebaseConfig = {
   apiKey: "",
@@ -128,10 +135,11 @@ function save(){
      logs,
      updatedAt,
      updatedBy: clientId
-   }).catch(() => {
+   }).catch((error) => {
      localStorage.setItem('inventory',JSON.stringify(inventory));
      localStorage.setItem('logs',JSON.stringify(logs));
-     syncStatus.textContent='雲端寫入失敗，資料已暫存本機。';
+     syncStatus.textContent=STATUS.writeFailed;
+     console.error('Firebase write failed:', error);
    });
    return;
  }
@@ -228,7 +236,7 @@ function render(){
 function initSync(){
  if(!enableCloudSync){
    readLocal();
-   syncStatus.textContent='目前為本機模式（僅此裝置）；填入 Firebase 設定即可手機/電腦同步。請勿把正式設定直接提交到版本庫。';
+   syncStatus.textContent=STATUS.localMode;
    render();
    return;
  }
@@ -236,7 +244,7 @@ function initSync(){
    firebase.initializeApp(firebaseConfig);
    remoteDb = firebase.database();
    remoteRef = remoteDb.ref('warehouse');
-   syncStatus.textContent='雲端同步中：手機與電腦會自動更新。';
+   syncStatus.textContent=STATUS.cloudMode;
    remoteRef.on('value', (snapshot) => {
      const data = snapshot.val() || {};
      if(data.updatedBy===clientId && data.updatedAt===lastWriteAt){ return; }
@@ -245,12 +253,13 @@ function initSync(){
      render();
    }, () => {
      readLocal();
-     syncStatus.textContent='雲端同步失敗，已切換本機模式。';
+     syncStatus.textContent=STATUS.readFailed;
      render();
    });
  }catch(e){
    readLocal();
-   syncStatus.textContent='雲端設定錯誤，已切換本機模式。';
+   syncStatus.textContent=STATUS.configFailed;
+   console.error('Firebase init failed:', e);
    render();
  }
 }
