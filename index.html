@@ -90,7 +90,14 @@ const firebaseConfig = {
   appId: ""
 };
 
-const enableCloudSync = Object.values(firebaseConfig).every(Boolean);
+function hasValidFirebaseConfig(config){
+ const required=['apiKey','authDomain','databaseURL','projectId','storageBucket','messagingSenderId','appId'];
+ const hasAll = required.every((key)=>typeof config[key]==='string' && config[key].trim()!=="");
+ if(!hasAll){ return false; }
+ return /^https?:\/\//.test(config.databaseURL.trim());
+}
+
+const enableCloudSync = hasValidFirebaseConfig(firebaseConfig);
 
 function adminLogin(){
  const p=prompt('請輸入管理密碼');
@@ -121,6 +128,10 @@ function save(){
      logs,
      updatedAt,
      updatedBy: clientId
+   }).catch(() => {
+     localStorage.setItem('inventory',JSON.stringify(inventory));
+     localStorage.setItem('logs',JSON.stringify(logs));
+     syncStatus.textContent='雲端寫入失敗，資料已暫存本機。';
    });
    return;
  }
