@@ -76,6 +76,7 @@ th{background:#eee}
 let isAdmin=false;
 let remoteDb=null;
 let remoteRef=null;
+let lastWriteAt=0;
 const syncStatus=document.getElementById('syncStatus');
 
 const firebaseConfig = {
@@ -112,10 +113,12 @@ function readLocal(){
 function save(){
  if(enableCloudSync){
    if(!remoteRef){ return; }
+   const updatedAt=Date.now();
+   lastWriteAt=updatedAt;
    remoteRef.set({
      inventory,
      logs,
-     updatedAt: Date.now()
+     updatedAt
    });
    return;
  }
@@ -222,6 +225,7 @@ function initSync(){
  syncStatus.textContent='雲端同步中：手機與電腦會自動更新。';
  remoteRef.on('value', (snapshot) => {
    const data = snapshot.val() || {};
+   if(data.updatedAt && data.updatedAt===lastWriteAt){ return; }
    inventory = Array.isArray(data.inventory) ? data.inventory : [];
    logs = Array.isArray(data.logs) ? data.logs : [];
    render();

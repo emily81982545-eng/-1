@@ -7,7 +7,7 @@
 ## 啟用手機/電腦同步
 
 1. 建立 Firebase 專案並啟用 **Realtime Database**。
-2. 開啟 `/home/runner/work/-1/-1/index.html`（以及同內容檔案 `/home/runner/work/-1/-1/倉儲管理系統_V5_前期存貨版.html`）中的 `firebaseConfig`。
+2. 開啟 `index.html`（以及同內容檔案 `倉儲管理系統_V5_前期存貨版.html`）中的 `firebaseConfig`。
 3. 將以下欄位填入你的 Firebase 設定值：
    - `apiKey`
    - `authDomain`
