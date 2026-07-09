@@ -5,12 +5,21 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>倉儲管理系統</title>
 <style>
+*{box-sizing:border-box}
 body{font-family:Arial;margin:20px;background:#f5f5f5}
 .card{background:#fff;padding:15px;border-radius:8px;margin-bottom:15px}
-input,button{padding:8px;margin:4px}
-table{width:100%;border-collapse:collapse}
+input,button{padding:8px;margin:4px;max-width:100%}
+table{width:100%;border-collapse:collapse;min-width:680px}
 th,td{border:1px solid #ccc;padding:8px;text-align:center}
 th{background:#eee}
+.table-wrap{overflow-x:auto}
+.status{margin:8px 0 0;color:#666;font-size:13px}
+@media (max-width:768px){
+ body{margin:10px}
+ input,button{width:100%;margin:6px 0}
+ .card{padding:12px}
+ h2,h3{margin:8px 0}
+}
 </style>
 </head>
 <body>
@@ -34,10 +43,12 @@ th{background:#eee}
 <input id="user" placeholder="領用人">
 <input id="qty" type="number" placeholder="領用數量">
 <button onclick="useStock()">確認領用</button>
+<div id="syncStatus" class="status"></div>
 </div>
 
 <div class="card">
 <h3>目前庫存</h3>
+<div class="table-wrap">
 <table>
 <thead>
 <tr><th>品項</th><th>倉庫位置</th><th>前期存貨</th><th>累計進貨</th><th>累計領用</th><th>目前庫存</th><th>操作</th></tr>
@@ -45,9 +56,11 @@ th{background:#eee}
 <tbody id="stockTable"></tbody>
 </table>
 </div>
+</div>
 
 <div class="card">
 <h3>領用歷史紀錄</h3>
+<div class="table-wrap">
 <table>
 <thead>
 <tr><th>時間</th><th>品項</th><th>領用人</th><th>領用數量</th><th>操作</th></tr>
@@ -55,9 +68,44 @@ th{background:#eee}
 <tbody id="logTable"></tbody>
 </table>
 </div>
+</div>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script>
 let isAdmin=false;
+let remoteDb=null;
+let remoteRef=null;
+let lastWriteAt=0;
+let hasShownCloudWriteFailure=false;
+const clientId=`client_${Math.random().toString(36).slice(2)}`;
+const syncStatus=document.getElementById('syncStatus');
+const STATUS = {
+ localMode: '目前為本機模式（僅此裝置）；填入 Firebase 設定即可手機/電腦同步。請勿把正式設定直接提交到版本庫。',
+ cloudMode: '雲端同步中：手機與電腦會自動更新。',
+ writeFailed: '雲端寫入失敗，資料已暫存本機。',
+ readFailed: '雲端同步失敗，已切換本機模式。',
+ configFailed: '雲端設定錯誤，已切換本機模式。'
+};
+
+const firebaseConfig = {
+  apiKey: "",
+  authDomain: "",
+  databaseURL: "",
+  projectId: "",
+  storageBucket: "",
+  messagingSenderId: "",
+  appId: ""
+};
+
+function hasValidFirebaseConfig(config){
+ const required=['apiKey','authDomain','databaseURL','projectId','storageBucket','messagingSenderId','appId'];
+ const hasAll = required.every((key)=>typeof config[key]==='string' && config[key].trim()!=="");
+ if(!hasAll){ return false; }
+ return /^https?:\/\//.test(config.databaseURL.trim());
+}
+
+const enableCloudSync = hasValidFirebaseConfig(firebaseConfig);
 
 function adminLogin(){
  const p=prompt('請輸入管理密碼');
@@ -70,10 +118,39 @@ function adminLogin(){
  }
 }
 
-let inventory = JSON.parse(localStorage.getItem('inventory')||'[]');
-let logs = JSON.parse(localStorage.getItem('logs')||'[]');
+let inventory = [];
+let logs = [];
+
+function readLocal(){
+ inventory = JSON.parse(localStorage.getItem('inventory')||'[]');
+ logs = JSON.parse(localStorage.getItem('logs')||'[]');
+}
 
 function save(){
+ if(enableCloudSync){
+   if(remoteRef){
+     const updatedAt=Date.now();
+     lastWriteAt=updatedAt;
+     remoteRef.set({
+       inventory,
+       logs,
+       updatedAt,
+       updatedBy: clientId
+     }).then(() => {
+       hasShownCloudWriteFailure=false;
+     }).catch((error) => {
+       localStorage.setItem('inventory',JSON.stringify(inventory));
+       localStorage.setItem('logs',JSON.stringify(logs));
+       syncStatus.textContent=STATUS.writeFailed;
+       if(!hasShownCloudWriteFailure){
+         hasShownCloudWriteFailure=true;
+         alert('雲端同步失敗，已暫存本機。請稍後再確認網路或 Firebase 權限設定。');
+       }
+       console.error('Firebase write failed:', error);
+     });
+     return;
+   }
+ }
  localStorage.setItem('inventory',JSON.stringify(inventory));
  localStorage.setItem('logs',JSON.stringify(logs));
 }
@@ -164,7 +241,40 @@ function render(){
  logs.map((r,i)=>`<tr><td>${r.time}</td><td>${r.item}</td><td>${r.user}</td><td>${r.qty}</td><td>${isAdmin?`<button onclick="deleteLog(${i})">🗑️刪除</button>`:""}</td></tr>`).join('');
 }
 
-render();
+function initSync(){
+ if(!enableCloudSync){
+   readLocal();
+   syncStatus.textContent=STATUS.localMode;
+   render();
+   return;
+ }
+ try{
+   firebase.initializeApp(firebaseConfig);
+   remoteDb = firebase.database();
+   remoteRef = remoteDb.ref('warehouse');
+   syncStatus.textContent=STATUS.cloudMode;
+   remoteRef.on('value', (snapshot) => {
+     const data = snapshot.val() || {};
+     if(data.updatedBy===clientId && data.updatedAt===lastWriteAt){ return; }
+     hasShownCloudWriteFailure=false;
+     inventory = Array.isArray(data.inventory) ? data.inventory : [];
+     logs = Array.isArray(data.logs) ? data.logs : [];
+     render();
+   }, () => {
+     remoteRef.off('value');
+     readLocal();
+     syncStatus.textContent=STATUS.readFailed;
+     render();
+   });
+ }catch(e){
+   readLocal();
+   syncStatus.textContent=STATUS.configFailed;
+   console.error('Firebase init failed:', e);
+   render();
+ }
+}
+
+initSync();
 </script>
 
 </body>
